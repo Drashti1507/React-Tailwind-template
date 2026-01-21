@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 
 function AddStudent() {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ function AddStudent() {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [languages, setLanguages] = useState([]);
-  const [imageBase64, setImageBase64] = useState(""); // only for preview + localStorage
+  const [imageBase64, setImageBase64] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -21,47 +21,47 @@ function AddStudent() {
 
   const studentRef = collection(db, "students");
 
-  // ---------------- VALIDATION ----------------
+  // ---------- TOKEN (FAKE JWT) ----------
+  // const createToken = (payload) => {
+  //   return btoa(JSON.stringify(payload)); // base64
+  // };
+
+  // ---------- VALIDATION ----------
   const validate = () => {
     let e = {};
     if (!name) e.name = "Name is required";
     if (!email) e.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = "Invalid email format";
-    if (!gender) e.gender = "Please select gender";
-    if (!dob) e.dob = "Please select date of birth";
-    if (languages.length === 0) e.languages = "Please select at least one skill";
-    if (!imageBase64) e.image = "Please upload profile picture";
+    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = "Invalid email";
+    if (!gender) e.gender = "Select gender";
+    if (!dob) e.dob = "Select DOB";
+    if (languages.length === 0) e.languages = "Select skill";
+    if (!imageBase64) e.image = "Upload image";
 
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  // ---------------- IMAGE HANDLER ----------------
+  // ---------- IMAGE ----------
   const handleImage = (file) => {
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImageBase64(reader.result); // preview + localStorage
-    };
+    reader.onloadend = () => setImageBase64(reader.result);
     reader.readAsDataURL(file);
   };
 
-  // ---------------- SAVE STUDENT ----------------
+  // ---------- SAVE ----------
   const handleSave = async () => {
     if (!validate()) return;
 
     try {
       setLoading(true);
 
-      // unique id for image
+      // save image locally
       const imageId = `student_img_${Date.now()}`;
-
-      // save image in localStorage
       localStorage.setItem(imageId, imageBase64);
 
-      // save student in firestore (only imageId)
-      await addDoc(studentRef, {
+      // 1. add student
+      const docRef = await addDoc(studentRef, {
         name,
         email,
         gender,
@@ -71,10 +71,29 @@ function AddStudent() {
         createdAt: new Date(),
       });
 
+      // 2. create token
+      // const token = createToken({
+      //   studentId: docRef.id,
+      //   name,
+      //   email,
+      //   time: Date.now(),
+      // });
+
+      // 3. save token in firestore
+      // const studentDocRef = doc(db, "students", docRef.id);
+      // await updateDoc(studentDocRef, {
+      //   token: token,
+      // });
+
+      localStorage.setItem("student_id", docRef.id);
+      // 4. save token in localStorage
+      // localStorage.setItem("student_token", token);
+
+      // 5. go to profile
       navigate("/dashboard/students");
     } catch (err) {
-      console.error("Error adding student:", err);
-      alert("Failed to save student");
+      console.error(err);
+      alert("Save failed");
     } finally {
       setLoading(false);
     }
@@ -82,137 +101,104 @@ function AddStudent() {
 
   const toggleLang = (lang) => {
     setLanguages((prev) =>
-      prev.includes(lang)
-        ? prev.filter((l) => l !== lang)
-        : [...prev, lang]
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
     );
   };
 
-  // ---------------- UI ----------------
+  // ---------- UI ----------
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 px-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-xl">
-      {/* Back Button */}
-      <div className="mt-6 flex justify-end">
-      <button
-        onClick={() => navigate("/dashboard/students")}
-        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg"
-      >
-        Back to List
-      </button>
-    </div>
-        
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Add Student
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+    <div className="bg-white rounded-xl w-full max-w-xl shadow overflow-hidden">
+  <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white text-center">
+    <h2 className="text-2xl font-bold">Student Registration</h2>
+    <p className="text-sm opacity-90">Create your student account</p>
+  </div>
 
-        <div className="space-y-4">
+  <div className="p-8">
 
-          {/* Name */}
-          <div>
-            <input
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
-              placeholder="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-          </div>
 
-          {/* Email */}
-          <div>
-            <input
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
+        <h2 className="text-2xl font-bold mb-4 text-center">Add Student</h2>
 
-          {/* Gender */}
-          <div>
-            <select
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-            >
-              <option value="">Select Gender</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
-            </select>
-            {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
-          </div>
+        <input autoFocus
+          className="w-full border p-2 mb-1 rounded"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
 
-          {/* DOB */}
-          <div>
-            <input
-              type="date"
-              max={new Date().toISOString().split("T")[0]}
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
-              value={dob}
-              onChange={(e) => setDob(e.target.value)}
-            />
-            {errors.dob && <p className="text-red-500 text-sm mt-1">{errors.dob}</p>}
-          </div>
+        <input autoFocus
+          className="w-full border p-2 mt-3 mb-1 rounded"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
-          {/* Skills */}
-          <div>
-            <p className="font-medium mb-2">Skills</p>
-            <div className="grid grid-cols-2 gap-2">
-              {["HTML", "CSS", "JS", "REACT"].map((l) => (
-                <label
-                  key={l}
-                  className="flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={languages.includes(l)}
-                    onChange={() => toggleLang(l)}
-                  />
-                  {l}
-                </label>
-              ))}
-            </div>
-            {errors.languages && (
-              <p className="text-red-500 text-sm mt-1">{errors.languages}</p>
-            )}
-          </div>
+        <select autoFocus
+          className="w-full border p-2 mt-3 rounded"
+          value={gender}
+          onChange={(e) => setGender(e.target.value)}
+        >
+          <option value="">Gender</option>
+          <option>Male</option>
+          <option>Female</option>
+        </select>
 
-          {/* Profile Picture */}
-          <div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImage(e.target.files[0])}
-              className="w-full border rounded-lg px-3 py-2"
-            />
-            {errors.image && (
-              <p className="text-red-500 text-sm mt-1">{errors.image}</p>
-            )}
+        <input autoFocus
+          type="date"
+          className="w-full border p-2 mt-3 rounded"
+          value={dob}
+          onChange={(e) => setDob(e.target.value)}
+        />
 
-            {/* Preview */}
-            {imageBase64 && (
-              <img
-                src={imageBase64}
-                alt="preview"
-                className="mt-3 h-24 w-24 object-cover rounded-full border mx-auto"
+        <div className="mt-3 flex flex-wrap gap-3">
+          {["HTML", "CSS", "JS", "REACT"].map((l) => (
+            <label key={l} className="flex items-center gap-1">
+              <input autoFocus
+                type="checkbox"
+                checked={languages.includes(l)}
+                onChange={() => toggleLang(l)}
               />
-            )}
-          </div>
-
-          {/* Button */}
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition disabled:opacity-60"
-          >
-            {loading ? "Saving..." : "Save Student"}
-          </button>
-
+              {l}
+            </label>
+          ))}
         </div>
+
+        <input autoFocus
+          type="file"
+          className="w-full mt-3"
+          accept="image/*"
+          onChange={(e) => handleImage(e.target.files[0])}
+        />
+
+        {imageBase64 && (
+          <img
+            src={imageBase64}
+            className="h-20 w-20 rounded-full mt-3 object-cover"
+          />
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="w-full bg-green-600 hover:bg-green-700 text-white p-2 mt-5 rounded"
+        >
+          {loading ? "Saving..." : "Save Student"}
+        </button>
+
+        <p className="text-center mt-4 text-sm text-gray-600">
+          Already have an account?{" "}
+          <span
+            onClick={() => navigate("/dashboard/login")}
+            className="text-blue-600 cursor-pointer hover:underline"
+          >
+            Login
+          </span>
+        </p>
+
       </div>
+    </div>
     </div>
   );
 }
