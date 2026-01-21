@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { db } from "@/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-function AddStudent() {
+function EditStudent() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -11,70 +12,102 @@ function AddStudent() {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [languages, setLanguages] = useState([]);
-  const [imageBase64, setImageBase64] = useState(""); // only for preview + localStorage
+  const [imageBase64, setImageBase64] = useState("");
+  const [oldImageId, setOldImageId] = useState("");
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  // ---------- LOAD STUDENT ----------
   useEffect(() => {
-    document.title = "Add Student | Dashboard";
-  }, []);
+    const loadStudent = async () => {
+      try {
+        const ref = doc(db, "students", id);
+        const snap = await getDoc(ref);
 
-  const studentRef = collection(db, "students");
+        if (!snap.exists()) {
+          alert("Student not found");
+          navigate("/dashboard/students");
+          return;
+        }
 
-  // ---------------- VALIDATION ----------------
+        const data = snap.data();
+
+        setName(data.name);
+        setEmail(data.email);
+        setGender(data.gender);
+        setDob(data.dob);
+        setLanguages(data.languages || []);
+        setOldImageId(data.imageId || "");
+
+        if (data.imageId) {
+          const img = localStorage.getItem(data.imageId);
+          setImageBase64(img || "");
+        }
+      } catch (err) {
+        console.error("Load error:", err);
+      }
+    };
+
+    loadStudent();
+  }, [id, navigate]);
+
+  // ---------- VALIDATION ----------
   const validate = () => {
     let e = {};
-    if (!name) e.name = "Name is required";
-    if (!email) e.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = "Invalid email format";
-    if (!gender) e.gender = "Please select gender";
-    if (!dob) e.dob = "Please select date of birth";
-    if (languages.length === 0) e.languages = "Please select at least one skill";
-    if (!imageBase64) e.image = "Please upload profile picture";
+    if (!name) e.name = "Name required";
+    if (!email) e.email = "Email required";
+    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = "Invalid email";
+    if (!gender) e.gender = "Select gender";
+    if (!dob) e.dob = "Select DOB";
+    if (languages.length === 0) e.languages = "Select at least one skill";
 
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  // ---------------- IMAGE HANDLER ----------------
+  // ---------- IMAGE ----------
   const handleImage = (file) => {
     if (!file) return;
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setImageBase64(reader.result); // preview + localStorage
+      setImageBase64(reader.result);
     };
     reader.readAsDataURL(file);
   };
 
-  // ---------------- SAVE STUDENT ----------------
-  const handleSave = async () => {
+  // ---------- UPDATE ----------
+  const handleUpdate = async () => {
     if (!validate()) return;
 
     try {
       setLoading(true);
 
-      // unique id for image
-      const imageId = `student_img_${Date.now()}`;
+      let imageId = oldImageId;
 
-      // save image in localStorage
-      localStorage.setItem(imageId, imageBase64);
+      // if image changed, replace in localStorage
+      if (imageBase64 && imageBase64 !== localStorage.getItem(oldImageId)) {
+        if (oldImageId) localStorage.removeItem(oldImageId);
 
-      // save student in firestore (only imageId)
-      await addDoc(studentRef, {
+        imageId = `student_img_${Date.now()}`;
+        localStorage.setItem(imageId, imageBase64);
+      }
+
+      await updateDoc(doc(db, "students", id), {
         name,
         email,
         gender,
         dob,
         languages,
         imageId,
-        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       navigate("/dashboard/students");
     } catch (err) {
-      console.error("Error adding student:", err);
-      alert("Failed to save student");
+      console.error("Update error:", err);
+      alert("Failed to update student");
     } finally {
       setLoading(false);
     }
@@ -88,22 +121,12 @@ function AddStudent() {
     );
   };
 
-  // ---------------- UI ----------------
+  // ---------- UI ----------
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-50 to-blue-50 px-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-xl">
-      {/* Back Button */}
-      <div className="mt-6 flex justify-end">
-      <button
-        onClick={() => navigate("/dashboard/students")}
-        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg"
-      >
-        Back to List
-      </button>
-    </div>
-        
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Add Student
+          Edit Student
         </h1>
 
         <div className="space-y-4">
@@ -111,7 +134,7 @@ function AddStudent() {
           {/* Name */}
           <div>
             <input
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               placeholder="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -122,7 +145,7 @@ function AddStudent() {
           {/* Email */}
           <div>
             <input
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -133,7 +156,7 @@ function AddStudent() {
           {/* Gender */}
           <div>
             <select
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
             >
@@ -150,7 +173,7 @@ function AddStudent() {
             <input
               type="date"
               max={new Date().toISOString().split("T")[0]}
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               value={dob}
               onChange={(e) => setDob(e.target.value)}
             />
@@ -180,7 +203,7 @@ function AddStudent() {
             )}
           </div>
 
-          {/* Profile Picture */}
+          {/* Profile */}
           <div>
             <input
               type="file"
@@ -188,11 +211,7 @@ function AddStudent() {
               onChange={(e) => handleImage(e.target.files[0])}
               className="w-full border rounded-lg px-3 py-2"
             />
-            {errors.image && (
-              <p className="text-red-500 text-sm mt-1">{errors.image}</p>
-            )}
 
-            {/* Preview */}
             {imageBase64 && (
               <img
                 src={imageBase64}
@@ -202,14 +221,23 @@ function AddStudent() {
             )}
           </div>
 
-          {/* Button */}
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition disabled:opacity-60"
-          >
-            {loading ? "Saving..." : "Save Student"}
-          </button>
+          {/* Buttons */}
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={() => navigate("/dashboard/students")}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              ← Back to List
+            </button>
+
+            <button
+              onClick={handleUpdate}
+              disabled={loading}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-60"
+            >
+              {loading ? "Updating..." : "Update Student"}
+            </button>
+          </div>
 
         </div>
       </div>
@@ -217,4 +245,4 @@ function AddStudent() {
   );
 }
 
-export default AddStudent;
+export default EditStudent;
