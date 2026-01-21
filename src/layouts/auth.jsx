@@ -21,15 +21,20 @@ export function Auth() {
       icon: UserIcon,
     },
     {
-      name: "sign up",
-      path: "/auth/sign-up",
-      icon: UserPlusIcon,
+      name: "student",
+      path: "/dashboard/student",
+      icon: UserIcon,
     },
-    {
-      name: "sign in",
-      path: "/auth/sign-in",
-      icon: ArrowRightOnRectangleIcon,
-    },
+    // {
+    //   name: "sign up",
+    //   path: "/auth/sign-up",
+    //   icon: UserPlusIcon,
+    // },
+    // {
+    //   name: "sign in",
+    //   path: "/auth/sign-in",
+    //   icon: ArrowRightOnRectangleIcon,
+    // },
   ];
 
   return (
