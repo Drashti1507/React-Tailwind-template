@@ -103,7 +103,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 // import { createUserWithEmailAndPassword } from "firebase/auth";
 // import { collection, addDoc } from "firebase/firestore";
-import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/firebase";
 
 export function SignUp() {
@@ -155,38 +155,51 @@ const handleRegister = async (e) => {
   try {
     setLoading(true);
 
+    // 1. CHECK IF EMAIL EXISTS
+    const q = query(
+      collection(db, "users"),
+      where("email", "==", email)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      setErrors({ email: "Email already registered" });
+      setLoading(false);
+      return; //  stop registration
+    }
+
     // save image locally
     const imageId = `student_img_${Date.now()}`;
     localStorage.setItem(imageId, imageBase64);
 
-    // 1. save user in Firestore
+    //  2. ADD USER
     const docRef = await addDoc(collection(db, "users"), {
       name,
-      email, /* */
-      password, /* xyz@123 */
+      email,
+      password,
       gender,
       dob,
-      // languages,
       imageId,
       createdAt: new Date(),
     });
 
-    // 2. generate fake JWT
-    const token = createToken({
-      userId: docRef.id,
-      email,
-      time: Date.now(),
-    });
-
-    // 3. save token in firestore
+    //  3. FAKE TOKEN
+    const token = btoa(
+      JSON.stringify({
+        userId: docRef.id,
+        email,
+        time: Date.now(),
+      })
+    );
+    // 4. SAVE TOKEN
     await updateDoc(doc(db, "users", docRef.id), { token });
 
-    // 4. save login session
+    //  5. SAVE SESSION
     localStorage.setItem("user_id", docRef.id);
     localStorage.setItem("user_token", token);
 
-    // navigate("/auth/sign-in");
-navigate("/dashboard/home");
+    navigate("/dashboard/home");
 
   } catch (err) {
     console.error(err);
@@ -195,6 +208,7 @@ navigate("/dashboard/home");
     setLoading(false);
   }
 };
+
 
 
   // ---------- UI ----------
