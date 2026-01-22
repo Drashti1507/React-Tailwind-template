@@ -27,7 +27,7 @@ import { Dashboard, Auth } from "@/layouts";
 import AddStudent from "./pages/dashboard/Student/Addstudent";
 import EditStudent from "./pages/dashboard/Student/Editstudent";
 import StudentProfile from "./pages/dashboard/Student/StudentProfile";
-
+import Success from "./pages/dashboard/Payment/success";
 function App() {
   return (
     <Routes>
@@ -40,6 +40,8 @@ function App() {
       <Route path="/dashboard/addStudent" element={<AddStudent />} />
       <Route path="/dashboard/editStudent/:id" element={<EditStudent />} />
       <Route path="/dashboard/studentprofile/:id" element={<StudentProfile />} />
+
+      <Route path="/dashboard/success" element={<Success />} />
 
       {/* fallback */}
       <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
