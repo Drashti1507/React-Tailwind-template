@@ -25,6 +25,9 @@ import {
 } from "@/context";
 import { db } from "@/firebase";
 import { updateDoc, doc, deleteField, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "@/firebase";
+import { FaUserCircle, FaEnvelope, FaBirthdayCake, FaSignOutAlt } from "react-icons/fa";
 
 export function DashboardNavbar() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -77,6 +80,28 @@ export function DashboardNavbar() {
     window.addEventListener("storage", fetchUser);
     return () => window.removeEventListener("storage", fetchUser);
   }, []);
+  // 🔥 GOOGLE AUTH LISTENER (ADDED - DOES NOT REMOVE YOUR LOGIC)
+useEffect(() => {
+  const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      try {
+        const ref = doc(db, "users", firebaseUser.uid);
+        const snap = await getDoc(ref);
+
+        if (snap.exists()) {
+          const data = snap.data();
+          setUser(data);
+          setProfileImg(data.photo || null); // Google photo
+        }
+      } catch (err) {
+        console.error("Google user fetch error:", err);
+      }
+    }
+  });
+
+  return () => unsub();
+}, []);
+
 
   // LOGOUT
   const handleLogout = async () => {
@@ -99,6 +124,22 @@ export function DashboardNavbar() {
       alert("Logout failed");
     }
   };
+  
+
+  //google logout
+  const handleGoogleLogout = async () =>{ 
+    try { await signOut(auth); 
+    localStorage.removeItem("user_id"); 
+    localStorage.removeItem("user_token"); 
+    setUser(null); setProfileImg(null); 
+    navigate("/auth/sign-in"); 
+  } 
+  catch (err)
+   {
+     console.error("Logout error:", err); 
+     alert("Logout failed");
+     }
+    };
 
   return (
     <Navbar
@@ -163,7 +204,7 @@ export function DashboardNavbar() {
           {/* LOGGED IN */}
           {user && (
             <Menu>
-              <MenuHandler>
+              {/* <MenuHandler>
                 <IconButton variant="text">
                   <Avatar
                     src={profileImg || "/img/user.png"}
@@ -171,21 +212,50 @@ export function DashboardNavbar() {
                     alt="profile"
                   />
                 </IconButton>
-              </MenuHandler>
+              </MenuHandler> */}
+              <MenuHandler>
+              <Button variant="text" className="flex items-center gap-2">
+                <Avatar
+                  src={profileImg || "/img/user.png"}
+                  size="sm"
+                  alt="profile"
+                />
+                <span className="hidden md:block text-sm font-medium">
+                  {user.name}
+                </span>
+              </Button>
+            </MenuHandler>
+
 
               <MenuList>
-                <MenuItem>
-                  👋 Hello, <b>{user.name}</b>
-                </MenuItem>
-                <MenuItem>📧 {user.email}</MenuItem>
-                <MenuItem>🎂 {user.dob}</MenuItem>
+  <MenuItem className="flex items-center gap-2">
+    <FaUserCircle className="text-blue-gray-700" />
+    Hello, <b>{user.name}</b>
+  </MenuItem>
 
-                <hr className="my-2" />
+  <MenuItem className="flex items-center gap-2">
+    <FaEnvelope className="text-blue-gray-700" />
+    {user.email}
+  </MenuItem>
 
-                <MenuItem className="text-red-500" onClick={handleLogout}>
-                  Logout
-                </MenuItem>
-              </MenuList>
+  {user.dob && (
+    <MenuItem className="flex items-center gap-2">
+      <FaBirthdayCake className="text-blue-gray-700" />
+      {user.dob}
+    </MenuItem>
+  )}
+
+  <hr className="my-2" />
+
+  <MenuItem
+    className="flex items-center gap-2 text-red-500"
+    onClick={user?.provider === "google" ? handleGoogleLogout : handleLogout}
+  >
+    <FaSignOutAlt />
+    Logout
+  </MenuItem>
+</MenuList>
+
             </Menu>
           )}
 

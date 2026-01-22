@@ -141,6 +141,9 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/firebase";
+import { setDoc } from "firebase/firestore";
 
 export function SignIn() {
   const navigate = useNavigate();
@@ -154,6 +157,38 @@ export function SignIn() {
   const createToken = (payload) => {
     return btoa(JSON.stringify(payload));
   };
+
+  const handleGoogleLogin = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    //  Save / Update user in Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      name: user.displayName,
+      email: user.email,
+      photo: user.photoURL,
+      provider: "google",
+      lastLogin: new Date(),
+    }, { merge: true });
+
+    // Save in localStorage (optional)
+    localStorage.setItem("user_id", user.uid);
+    localStorage.setItem("user_token", user.accessToken || user.uid);
+    
+    navigate("/dashboard/home");
+
+  } catch (err) {
+    console.error(err);
+    setError("Google login failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -184,17 +219,17 @@ export function SignIn() {
       const userData = userDoc.data();
       const userRef = doc(db, "users", userDoc.id);
 
-      // ✅ GENERATE SIMPLE TOKEN
+      //  GENERATE SIMPLE TOKEN
       const token = createToken({
         uid: userDoc.id,
         email: userData.email,
         time: Date.now(),
       });
 
-      // ✅ SAVE TOKEN IN FIRESTORE
+      //  SAVE TOKEN IN FIRESTORE
       await updateDoc(userRef, { token });
 
-      // ✅ SAVE IN LOCAL STORAGE
+      //  SAVE IN LOCAL STORAGE
       localStorage.setItem("user_id", userDoc.id);
       localStorage.setItem("user_token", token);
 
@@ -246,8 +281,22 @@ export function SignIn() {
           </div>
 
           <Button className="mt-6" fullWidth type="submit" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
-          </Button>
+                        {loading ? "Signing in..." : "Sign In"}
+                      </Button>
+                      <Button
+              className="mt-4 flex items-center justify-center gap-2"
+              fullWidth
+              variant="outlined"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+            >
+              <img
+                src="https://developers.google.com/identity/images/g-logo.png"
+                alt="google"
+                className="h-5 w-5"
+              />
+              Sign in with Google
+            </Button>
 
           <Typography className="text-center text-blue-gray-500 mt-4">
             Not registered?

@@ -11,7 +11,8 @@ import { SignUp , SignIn } from "@/pages/auth";
 import Student from "@/pages/dashboard/Student/StudentList";
 // import Logout from "./pages/auth/Logout";
 import { UserGroupIcon } from "@heroicons/react/24/solid";
-
+import ProductPayment from "@/pages/dashboard/Payment/ProductPayment";
+import { CreditCardIcon } from "@heroicons/react/24/solid";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -50,6 +51,12 @@ export const routes = [
         name: "students",
         path: "/students",
         element: <Student />,
+      },
+      {
+        icon: <CreditCardIcon {...icon} />,
+        name: "payment",
+        path: "/payment",
+        element: <ProductPayment />,
       },
     ],
   },

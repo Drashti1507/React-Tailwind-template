@@ -105,6 +105,7 @@ import { useState } from "react";
 // import { collection, addDoc } from "firebase/firestore";
 import { collection, addDoc, updateDoc, doc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/firebase";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export function SignUp() {
 
@@ -113,6 +114,7 @@ export function SignUp() {
   // ---------- STATES ----------
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
@@ -254,14 +256,25 @@ const handleRegister = async (e) => {
             />
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
-            <Input
-              type="password"
-              size="lg"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  size="lg"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600"
+                >
+                 {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+
+              {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
 
            <div>
             <Typography variant="small" className="mb-1 font-medium">
@@ -295,21 +308,21 @@ const handleRegister = async (e) => {
             {errors.gender && <p className="text-red-500 text-sm">{errors.gender}</p>}
           </div>
 
-            <div>
-              <Typography variant="small" className="mb-1 font-medium">
-                Date of Birth
-              </Typography>
+           <div>
+          <Typography variant="small" className="mb-1 font-medium">
+            Date of Birth
+          </Typography>
 
-              <Input
-                type="date"
-                size="lg"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-              />
+          <Input
+            type="date"
+            size="lg"
+            max={new Date().toISOString().split("T")[0]}
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+          />
 
-              {errors.dob && <p className="text-red-500 text-sm">{errors.dob}</p>}
-            </div>
-
+          {errors.dob && <p className="text-red-500 text-sm">{errors.dob}</p>}
+        </div>
 
             {/* Languages (comma separated) */}
             {/* <div>
